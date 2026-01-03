@@ -1,66 +1,59 @@
-import type { Metadata } from "next";
+'use client';
 
-export const metadata: Metadata = {
-  title: "扣子编程 - AI 开发伙伴",
-  description: "扣子编程，你的 AI 开发伙伴已就位",
-};
+import { useState } from 'react';
+import QuizPage from '@/app/quiz/page';
+import NewsPage from '@/app/news/page';
+import ProfilePage from '@/app/profile/page';
 
 export default function Home() {
+  const [activeTab, setActiveTab] = useState('quiz');
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-white text-black transition-colors duration-300 dark:bg-black dark:text-white">
-      {/* 主容器 */}
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between px-16 py-32 sm:items-start">
-        {/* 头部：Logo 和 产品名称 */}
-        <div className="flex items-center gap-3">
-          {/* 注意：生产环境建议使用 next/image 并配置 remotePatterns */}
-          <img
-            className="dark:invert"
-            src="https://lf3-static.bytednsdoc.com/obj/eden-cn/hkpzboz/coze_logo.png"
-            alt="扣子编程 Logo"
-            width={40}
-            height={40}
-            style={{ width: "40px", height: "40px", objectFit: "contain" }}
-          />
-          <span className="text-xl font-bold tracking-tight text-black dark:text-zinc-50">
-            扣子编程
-          </span>
-        </div>
-
-        {/* 中间内容区：主标题和副标题 */}
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xl text-4xl font-semibold leading-tight tracking-tight text-black dark:text-zinc-50">
-            扣子编程，你的 AI 开发伙伴已就位
-          </h1>
-          <p className="max-w-2xl text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            当前是空白入口文件，项目正在开发中，请稍候...
-            <br />
-            开发完成后界面将自动更新。如未自动更新成功，可以手动点击右上角刷新或重启按钮查看效果。
-          </p>
-        </div>
-
-        {/* 底部按钮区 */}
-        <div className="flex w-full flex-col gap-4 text-base font-medium sm:w-auto sm:flex-row">
-          {/* 按钮 1：前往首页 */}
-          <a
-            className="flex h-12 w-full min-w-[160px] items-center justify-center gap-2 rounded-full bg-black px-8 text-white transition-colors hover:bg-zinc-800 dark:bg-white dark:text-black dark:hover:bg-zinc-200 md:w-auto"
-            href="https://code.coze.cn/"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            前往首页
-          </a>
-
-          {/* 按钮 2：查看文档 */}
-          <a
-            className="flex h-12 w-full min-w-[160px] items-center justify-center rounded-full border border-solid border-black/[.08] px-8 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-auto"
-            href="https://docs.coze.cn/"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            查看文档
-          </a>
-        </div>
+    <div className="min-h-screen bg-gray-50 pb-20">
+      <main className="min-h-screen">
+        {activeTab === 'quiz' && <QuizPage />}
+        {activeTab === 'news' && <NewsPage />}
+        {activeTab === 'profile' && <ProfilePage />}
       </main>
+
+      {/* 底部导航栏 */}
+      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200">
+        <div className="flex justify-around items-center h-16 max-w-lg mx-auto">
+          <button
+            onClick={() => setActiveTab('quiz')}
+            className={`flex flex-col items-center justify-center flex-1 h-full ${
+              activeTab === 'quiz' ? 'text-blue-600' : 'text-gray-500'
+            }`}
+          >
+            <svg className="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+            </svg>
+            <span className="text-xs">刷题</span>
+          </button>
+          <button
+            onClick={() => setActiveTab('news')}
+            className={`flex flex-col items-center justify-center flex-1 h-full ${
+              activeTab === 'news' ? 'text-blue-600' : 'text-gray-500'
+            }`}
+          >
+            <svg className="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" />
+            </svg>
+            <span className="text-xs">资讯</span>
+          </button>
+          <button
+            onClick={() => setActiveTab('profile')}
+            className={`flex flex-col items-center justify-center flex-1 h-full ${
+              activeTab === 'profile' ? 'text-blue-600' : 'text-gray-500'
+            }`}
+          >
+            <svg className="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+            </svg>
+            <span className="text-xs">我的</span>
+          </button>
+        </div>
+      </nav>
     </div>
   );
 }
