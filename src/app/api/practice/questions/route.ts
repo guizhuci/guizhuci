@@ -55,7 +55,7 @@ export async function GET(request: NextRequest) {
               const cleanStr = row.options.trim().replace(/^\[|\]$/g, '');
               if (cleanStr) {
                 // 使用空格分割，并处理可能的多余空格
-                options = cleanStr.split(/\s+/).filter(opt => opt.trim());
+                options = cleanStr.split(/\s+/).filter((opt: string) => opt.trim());
               }
             }
           }

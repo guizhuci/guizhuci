@@ -65,7 +65,7 @@ export async function GET(request: NextRequest) {
             } catch {
               const cleanStr = row.options.trim().replace(/^\[|\]$/g, '');
               if (cleanStr) {
-                options = cleanStr.split(/\s+/).filter(opt => opt.trim());
+                options = cleanStr.split(/\s+/).filter((opt: string) => opt.trim());
               }
             }
           }

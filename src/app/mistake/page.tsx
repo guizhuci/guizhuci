@@ -237,39 +237,79 @@ export default function MistakePage() {
                 {mistake.question_text}
               </h3>
 
-              <div className="space-y-2 mb-4">
-                {mistake.options.map((option, index) => {
-                  const optionLabel = ['A', 'B', 'C', 'D'][index];
-                  const isUserAnswer = mistake.user_answer === option;
-                  const isCorrectAnswer = mistake.answer === option;
+              {/* 判断题：显示对错选项 */}
+              {(!mistake.options || mistake.options.length === 0) && (
+                <div className="space-y-2 mb-4">
+                  {['A', 'B'].map((option) => {
+                    const optionText = option === 'A' ? '正确' : '错误';
+                    const isUserAnswer = mistake.user_answer === option;
+                    const isCorrectAnswer = mistake.answer === option;
 
-                  return (
-                    <div
-                      key={index}
-                      className={`p-3 rounded-lg border ${
-                        isUserAnswer
-                          ? 'border-red-500 bg-red-50'
-                          : isCorrectAnswer
-                            ? 'border-green-500 bg-green-50'
-                            : 'border-gray-200'
-                      }`}
-                    >
-                      <div className="flex items-start">
-                        <span className="flex-shrink-0 w-5 h-5 rounded-full border flex items-center justify-center mr-2 text-xs">
-                          {optionLabel}
-                        </span>
-                        <span className="text-sm flex-1">{option}</span>
-                        {isUserAnswer && !isCorrectAnswer && (
-                          <span className="text-xs text-red-600 font-medium">您的答案</span>
-                        )}
-                        {isCorrectAnswer && (
-                          <span className="text-xs text-green-600 font-medium">正确答案</span>
-                        )}
+                    return (
+                      <div
+                        key={option}
+                        className={`p-3 rounded-lg border ${
+                          isUserAnswer
+                            ? 'border-red-500 bg-red-50'
+                            : isCorrectAnswer
+                              ? 'border-green-500 bg-green-50'
+                              : 'border-gray-200'
+                        }`}
+                      >
+                        <div className="flex items-start">
+                          <span className="flex-shrink-0 w-5 h-5 rounded-full border flex items-center justify-center mr-2 text-xs">
+                            {option}
+                          </span>
+                          <span className="text-sm flex-1">{optionText}</span>
+                          {isUserAnswer && !isCorrectAnswer && (
+                            <span className="text-xs text-red-600 font-medium">您的答案</span>
+                          )}
+                          {isCorrectAnswer && (
+                            <span className="text-xs text-green-600 font-medium">正确答案</span>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  );
-                })}
-              </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* 选择题：显示选项 */}
+              {mistake.options && mistake.options.length > 0 && (
+                <div className="space-y-2 mb-4">
+                  {mistake.options.map((option, index) => {
+                    const optionLabel = ['A', 'B', 'C', 'D'][index];
+                    const isUserAnswer = mistake.user_answer === option;
+                    const isCorrectAnswer = mistake.answer === option;
+
+                    return (
+                      <div
+                        key={index}
+                        className={`p-3 rounded-lg border ${
+                          isUserAnswer
+                            ? 'border-red-500 bg-red-50'
+                            : isCorrectAnswer
+                              ? 'border-green-500 bg-green-50'
+                              : 'border-gray-200'
+                        }`}
+                      >
+                        <div className="flex items-start">
+                          <span className="flex-shrink-0 w-5 h-5 rounded-full border flex items-center justify-center mr-2 text-xs">
+                            {optionLabel}
+                          </span>
+                          <span className="text-sm flex-1">{option}</span>
+                          {isUserAnswer && !isCorrectAnswer && (
+                            <span className="text-xs text-red-600 font-medium">您的答案</span>
+                          )}
+                          {isCorrectAnswer && (
+                            <span className="text-xs text-green-600 font-medium">正确答案</span>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
 
               {showAnswer[mistake.question_id] && (
                 <div className="bg-blue-50 rounded-lg p-4 mb-4">

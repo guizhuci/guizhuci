@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>判断题测试</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 min-h-screen p-4">
+  <div class="max-w-lg mx-auto">
+    <h1 class="text-2xl font-bold mb-6 text-center">判断题显示测试</h1>
+
+    <div id="question-container" class="space-y-4">
+      <!-- 题目将在这里动态渲染 -->
+    </div>
+
+    <div class="mt-8">
+      <h2 class="text-lg font-bold mb-4">测试说明</h2>
+      <div class="bg-white rounded-lg p-4 text-sm text-gray-600">
+        <p class="mb-2">此页面用于测试判断题的显示：</p>
+        <ul class="list-disc list-inside space-y-1">
+          <li>判断题的options为空数组</li>
+          <li>前端应自动显示"正确"和"错误"两个选项</li>
+          <li>答案字段应为A或B</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const testQuestions = [
+      {
+        id: 11,
+        question_text: '信息可以脱离载体独立存在。（ ）',
+        options: [],
+        answer: 'A',
+        explanation: ''
+      },
+      {
+        id: 12,
+        question_text: '数据经过加工处理后才能转化为信息。（ ）',
+        options: [],
+        answer: 'B',
+        explanation: ''
+      },
+      {
+        id: 1,
+        question_text: '以下关于数据的描述，错误的是：',
+        options: ['数据可以存储在多种载体中', '数据是信息的载体', '数据只能以数字形式存在', '数据具有可处理性'],
+        answer: 'D',
+        explanation: ''
+      }
+    ];
+
+    const container = document.getElementById('question-container');
+
+    testQuestions.forEach((q, index) => {
+      const questionDiv = document.createElement('div');
+      questionDiv.className = 'bg-white rounded-xl p-6 border border-gray-200';
+
+      const isJudgment = !q.options || q.options.length === 0;
+
+      let optionsHtml = '';
+      if (isJudgment) {
+        optionsHtml = `
+          <div class="space-y-3 mt-4">
+            <button class="w-full p-4 rounded-lg border-2 border-gray-200 hover:border-blue-400 text-left">
+              <div class="flex items-start">
+                <span class="flex-shrink-0 w-6 h-6 rounded-full border-2 border-gray-300 flex items-center justify-center mr-3 text-sm font-medium">A</span>
+                <span class="flex-1">正确</span>
+              </div>
+            </button>
+            <button class="w-full p-4 rounded-lg border-2 border-gray-200 hover:border-blue-400 text-left">
+              <div class="flex items-start">
+                <span class="flex-shrink-0 w-6 h-6 rounded-full border-2 border-gray-300 flex items-center justify-center mr-3 text-sm font-medium">B</span>
+                <span class="flex-1">错误</span>
+              </div>
+            </button>
+          </div>
+        `;
+      } else {
+        optionsHtml = `
+          <div class="space-y-3 mt-4">
+            ${q.options.map((opt, i) => {
+              const label = ['A', 'B', 'C', 'D'][i];
+              return `
+                <button class="w-full p-4 rounded-lg border-2 border-gray-200 hover:border-blue-400 text-left">
+                  <div class="flex items-start">
+                    <span class="flex-shrink-0 w-6 h-6 rounded-full border-2 border-gray-300 flex items-center justify-center mr-3 text-sm font-medium">${label}</span>
+                    <span class="flex-1">${opt}</span>
+                  </div>
+                </button>
+              `;
+            }).join('')}
+          </div>
+        `;
+      }
+
+      questionDiv.innerHTML = `
+        <div class="flex items-center justify-between mb-2">
+          <span class="text-sm text-blue-600 font-medium">${isJudgment ? '判断题' : '选择题'}</span>
+          <span class="text-sm text-gray-500">正确答案: ${q.answer}</span>
+        </div>
+        <h3 class="text-lg font-medium mb-2 leading-relaxed">${q.question_text}</h3>
+        ${optionsHtml}
+      `;
+
+      container.appendChild(questionDiv);
+    });
+  </script>
+</body>
+</html>

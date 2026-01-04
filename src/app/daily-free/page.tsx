@@ -197,39 +197,79 @@ export default function DailyFreePage() {
           {currentQuestion.question_text}
         </h3>
 
-        <div className="space-y-3">
-          {currentQuestion.options.map((option, index) => {
-            const optionLabel = ['A', 'B', 'C', 'D'][index];
-            const isSelected = userAnswers[currentQuestion.id] === option;
-            const isCorrectAnswer = option === currentQuestion.answer;
+        {/* 判断题：显示对错选项 */}
+        {(!currentQuestion.options || currentQuestion.options.length === 0) && (
+          <div className="space-y-3">
+            {['A', 'B'].map((option) => {
+              const optionText = option === 'A' ? '正确' : '错误';
+              const isSelected = userAnswers[currentQuestion.id] === option;
+              const isCorrectAnswer = option === currentQuestion.answer;
 
-            return (
-              <button
-                key={index}
-                onClick={() => !hasAnswered && handleSelectAnswer(option)}
-                disabled={hasAnswered}
-                className={`w-full p-4 rounded-lg border-2 text-left transition-all ${
-                  !hasAnswered
-                    ? 'border-gray-200 hover:border-blue-400'
-                    : isSelected
-                      ? isCorrect
-                        ? 'border-green-500 bg-green-50'
-                        : 'border-red-500 bg-red-50'
-                      : isCorrectAnswer
-                        ? 'border-green-500 bg-green-50'
-                        : 'border-gray-200 bg-gray-50'
-                }`}
-              >
-                <div className="flex items-start">
-                  <span className="flex-shrink-0 w-6 h-6 rounded-full border-2 flex items-center justify-center mr-3 text-sm font-medium">
-                    {optionLabel}
-                  </span>
-                  <span className="flex-1">{option}</span>
-                </div>
-              </button>
-            );
-          })}
-        </div>
+              return (
+                <button
+                  key={option}
+                  onClick={() => !hasAnswered && handleSelectAnswer(option)}
+                  disabled={hasAnswered}
+                  className={`w-full p-4 rounded-lg border-2 text-left transition-all ${
+                    !hasAnswered
+                      ? 'border-gray-200 hover:border-blue-400'
+                      : isSelected
+                        ? isCorrect
+                          ? 'border-green-500 bg-green-50'
+                          : 'border-red-500 bg-red-50'
+                        : isCorrectAnswer
+                          ? 'border-green-500 bg-green-50'
+                          : 'border-gray-200 bg-gray-50'
+                  }`}
+                >
+                  <div className="flex items-start">
+                    <span className="flex-shrink-0 w-6 h-6 rounded-full border-2 flex items-center justify-center mr-3 text-sm font-medium">
+                      {option}
+                    </span>
+                    <span className="flex-1">{optionText}</span>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        {/* 选择题：显示选项 */}
+        {currentQuestion.options && currentQuestion.options.length > 0 && (
+          <div className="space-y-3">
+            {currentQuestion.options.map((option, index) => {
+              const optionLabel = ['A', 'B', 'C', 'D'][index];
+              const isSelected = userAnswers[currentQuestion.id] === option;
+              const isCorrectAnswer = option === currentQuestion.answer;
+
+              return (
+                <button
+                  key={index}
+                  onClick={() => !hasAnswered && handleSelectAnswer(option)}
+                  disabled={hasAnswered}
+                  className={`w-full p-4 rounded-lg border-2 text-left transition-all ${
+                    !hasAnswered
+                      ? 'border-gray-200 hover:border-blue-400'
+                      : isSelected
+                        ? isCorrect
+                          ? 'border-green-500 bg-green-50'
+                          : 'border-red-500 bg-red-50'
+                        : isCorrectAnswer
+                          ? 'border-green-500 bg-green-50'
+                          : 'border-gray-200 bg-gray-50'
+                  }`}
+                >
+                  <div className="flex items-start">
+                    <span className="flex-shrink-0 w-6 h-6 rounded-full border-2 flex items-center justify-center mr-3 text-sm font-medium">
+                      {optionLabel}
+                    </span>
+                    <span className="flex-1">{option}</span>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        )}
 
         {/* 答案解析 */}
         {hasAnswered && (
