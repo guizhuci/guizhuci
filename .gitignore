@@ -1,56 +1,35 @@
-node_modules
-dist
+# dependencies
+node_modules/
+.pnpm-store/
+
+# next.js
+.next/
+out/
+
+# production
+build/
+dist/
+
+# misc
 .DS_Store
-*.swp
-.git/*
-__pycache__/
-*.pyc
-.venv/*
-*.o
-*.a
-/vendor
-*.egg-info/
-/.env
+*.pem
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# local env files
+.env*.local
 .env
 
-# JS/TS bundlers & build outputs
-.next
-.nuxt
-.turbo
+# vercel
 .vercel
-.parcel-cache
-.cache
-coverage
-storybook-static
 
-# Package manager artifacts
-pnpm-lock.yaml
-package-lock.json
-yarn.lock
-.pnp*
-.npm
+# typescript
+*.tsbuildinfo
+next-env.d.ts
 
-# Python tooling
-.pytest_cache/
-.mypy_cache/
-.ruff_cache/
-.tox/
-
-# Go tooling
-bin/
-*.test
-
-# Editor / IDE
-.vscode/
-.idea/
-*.iml
-
-# OS / misc
-Thumbs.db
-ehthumbs.db
-
-# Logs
-output.log
-*.log
-*.log.*
+# logs
 logs/
+*.log
