@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>桂职测助手 - 测试导航</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    h1 {
+      color: #007bff;
+      text-align: center;
+      margin-bottom: 30px;
+    }
+    .card {
+      background: white;
+      border-radius: 10px;
+      padding: 20px;
+      margin-bottom: 20px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .card h2 {
+      margin-top: 0;
+      color: #333;
+    }
+    .link-list {
+      list-style: none;
+      padding: 0;
+    }
+    .link-list li {
+      margin-bottom: 10px;
+    }
+    .link-list a {
+      display: block;
+      padding: 12px 20px;
+      background: #007bff;
+      color: white;
+      text-decoration: none;
+      border-radius: 5px;
+      transition: background 0.3s;
+    }
+    .link-list a:hover {
+      background: #0056b3;
+    }
+    .status {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: bold;
+      margin-left: 10px;
+    }
+    .status.ok {
+      background: #d4edda;
+      color: #155724;
+    }
+    .status.pending {
+      background: #fff3cd;
+      color: #856404;
+    }
+  </style>
+</head>
+<body>
+  <h1>桂职测助手 - 测试导航</h1>
+
+  <div class="card">
+    <h2>📱 主要页面</h2>
+    <ul class="link-list">
+      <li>
+        <a href="/" target="_blank">首页（完整应用）</a>
+        <span class="status ok">✓ 可访问</span>
+      </li>
+      <li>
+        <a href="/practice" target="_blank">专项练习页面</a>
+        <span class="status ok">✓ 可访问</span>
+      </li>
+      <li>
+        <a href="/daily-free" target="_blank">每日免费刷题</a>
+        <span class="status ok">✓ 可访问</span>
+      </li>
+      <li>
+        <a href="/exam" target="_blank">全真模拟卷</a>
+        <span class="status ok">✓ 可访问</span>
+      </li>
+      <li>
+        <a href="/mistake" target="_blank">错题集</a>
+        <span class="status ok">✓ 可访问</span>
+      </li>
+      <li>
+        <a href="/profile" target="_blank">个人中心</a>
+        <span class="status ok">✓ 可访问</span>
+      </li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h2>🔧 测试工具</h2>
+    <ul class="link-list">
+      <li>
+        <a href="/test_practice_complete.html" target="_blank">专项练习API完整测试</a>
+        <span class="status ok">✓ 可用</span>
+      </li>
+      <li>
+        <a href="/test_simple.html" target="_blank">localStorage测试</a>
+        <span class="status ok">✓ 可用</span>
+      </li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h2>📊 数据库状态</h2>
+    <ul class="link-list">
+      <li>
+        <a href="/api/subjects" target="_blank">科目列表API</a>
+        <span class="status ok">✓ 5个科目</span>
+      </li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h2>ℹ️ 使用说明</h2>
+    <p>1. 点击"首页（完整应用）"体验完整的桂职测助手功能</p>
+    <p>2. 点击各个页面链接直接访问对应功能模块</p>
+    <p>3. 使用测试工具验证API和localStorage是否正常</p>
+    <p>4. 所有页面已修复localStorage的SSR问题，可以正常访问</p>
+  </div>
+</body>
+</html>

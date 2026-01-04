@@ -19,13 +19,22 @@ export default function DailyFreePage() {
   const [completed, setCompleted] = useState(false);
   const [todayAnswered, setTodayAnswered] = useState(false);
   const [todayCount, setTodayCount] = useState(0);
+  const [mounted, setMounted] = useState(false);
+  const [userId, setUserId] = useState<string>('');
 
-  const userId = localStorage.getItem('userId');
+  // 确保组件只在客户端运行时才访问localStorage
+  useEffect(() => {
+    setMounted(true);
+    const savedUserId = localStorage.getItem('userId');
+    setUserId(savedUserId || '1');
+  }, []);
 
   // 检查今日答题情况
   useEffect(() => {
-    checkTodayStatus();
-  }, []);
+    if (mounted && userId) {
+      checkTodayStatus();
+    }
+  }, [mounted, userId]);
 
   const checkTodayStatus = async () => {
     try {

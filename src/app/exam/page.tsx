@@ -17,12 +17,21 @@ export default function ExamPage() {
   const [currentPaper, setCurrentPaper] = useState<ExamPaper | null>(null);
   const [loading, setLoading] = useState(true);
   const [mode, setMode] = useState<'list' | 'taking' | 'result'>('list');
+  const [mounted, setMounted] = useState(false);
+  const [userId, setUserId] = useState<string>('');
 
-  const userId = localStorage.getItem('userId');
+  // 确保组件只在客户端运行时才访问localStorage
+  useEffect(() => {
+    setMounted(true);
+    const savedUserId = localStorage.getItem('userId');
+    setUserId(savedUserId || '1');
+  }, []);
 
   useEffect(() => {
-    loadExamPapers();
-  }, []);
+    if (mounted) {
+      loadExamPapers();
+    }
+  }, [mounted]);
 
   const loadExamPapers = async () => {
     try {

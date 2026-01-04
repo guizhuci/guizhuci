@@ -12,14 +12,22 @@ export default function Home() {
   const [activeTab, setActiveTab] = useState('quiz');
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [currentPage, setCurrentPage] = useState<'free' | 'practice' | 'exam' | 'mistake'>('free');
+  const [mounted, setMounted] = useState(false);
+
+  // 确保组件只在客户端运行时才访问localStorage
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // 检查登录状态
   useEffect(() => {
-    const userId = localStorage.getItem('userId');
-    if (userId) {
-      setIsLoggedIn(true);
+    if (mounted) {
+      const userId = localStorage.getItem('userId');
+      if (userId) {
+        setIsLoggedIn(true);
+      }
     }
-  }, []);
+  }, [mounted]);
 
   const handleLogin = () => {
     // 模拟微信授权登录

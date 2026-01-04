@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>简单测试</title>
+</head>
+<body>
+  <h1>简单测试页面</h1>
+  <div id="status"></div>
+
+  <script>
+    try {
+      localStorage.setItem('test', 'hello');
+      const value = localStorage.getItem('test');
+      document.getElementById('status').innerHTML = `
+        <p style="color: green;">✓ localStorage 工作正常</p>
+        <p>测试值: ${value}</p>
+      `;
+    } catch (error) {
+      document.getElementById('status').innerHTML = `
+        <p style="color: red;">✗ localStorage 不工作</p>
+        <p>错误: ${error.message}</p>
+      `;
+    }
+  </script>
+</body>
+</html>

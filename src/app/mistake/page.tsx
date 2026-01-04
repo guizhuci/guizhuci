@@ -24,17 +24,28 @@ export default function MistakePage() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [showAnswer, setShowAnswer] = useState<Record<number, boolean>>({});
   const [loading, setLoading] = useState(true);
+  const [mounted, setMounted] = useState(false);
+  const [userId, setUserId] = useState<string>('');
 
-  const userId = localStorage.getItem('userId');
-
+  // 确保组件只在客户端运行时才访问localStorage
   useEffect(() => {
-    loadSubjects();
-    loadPapers();
+    setMounted(true);
+    const savedUserId = localStorage.getItem('userId');
+    setUserId(savedUserId || '1');
   }, []);
 
   useEffect(() => {
-    loadMistakes();
-  }, [tab, selectedSubject, selectedPaper]);
+    if (mounted) {
+      loadSubjects();
+      loadPapers();
+    }
+  }, [mounted]);
+
+  useEffect(() => {
+    if (mounted) {
+      loadMistakes();
+    }
+  }, [mounted, tab, selectedSubject, selectedPaper]);
 
   const loadSubjects = async () => {
     try {

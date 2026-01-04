@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>专项练习完整测试</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    .test-item {
+      margin: 20px 0;
+      padding: 15px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+    }
+    .success { border-left: 4px solid #4caf50; }
+    .error { border-left: 4px solid #f44336; }
+    .pending { border-left: 4px solid #ff9800; }
+    button {
+      background: #007bff;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 5px;
+      cursor: pointer;
+      margin: 5px;
+    }
+    button:hover { background: #0056b3; }
+    pre {
+      background: #f5f5f5;
+      padding: 10px;
+      border-radius: 5px;
+      overflow-x: auto;
+    }
+  </style>
+</head>
+<body>
+  <h1>专项练习完整测试</h1>
+  <div id="test-results"></div>
+
+  <script>
+    const testResults = [];
+
+    function addTestResult(name, status, message = '', data = null) {
+      testResults.push({ name, status, message, data });
+      updateUI();
+    }
+
+    function updateUI() {
+      const html = testResults.map((test, index) => `
+        <div class="test-item ${test.status}">
+          <h3>${index + 1}. ${test.name}</h3>
+          <p>
+            状态: <span style="color: ${
+              test.status === 'success' ? '#4caf50' :
+              test.status === 'error' ? '#f44336' : '#ff9800'
+            }">${
+              test.status === 'success' ? '✓ 成功' :
+              test.status === 'error' ? '✗ 失败' : '⏳ 测试中'
+            }</span>
+          </p>
+          ${test.message ? `<p>${test.message}</p>` : ''}
+          ${test.data ? `<pre>${JSON.stringify(test.data, null, 2).substring(0, 500)}</pre>` : ''}
+        </div>
+      `).join('');
+
+      document.getElementById('test-results').innerHTML = `
+        <div style="margin: 20px 0;">
+          <button onclick="runAllTests()">运行所有测试</button>
+          <button onclick="clearResults()">清除结果</button>
+          <a href="/practice" target="_blank">
+            <button>访问专项练习页面</button>
+          </a>
+        </div>
+        ${html}
+      `;
+    }
+
+    async function testLocalStorage() {
+      addTestResult('测试 localStorage', 'pending');
+      try {
+        localStorage.setItem('userId', '1');
+        const userId = localStorage.getItem('userId');
+        if (userId === '1') {
+          addTestResult('测试 localStorage', 'success', 'localStorage 工作正常');
+        } else {
+          addTestResult('测试 localStorage', 'error', 'localStorage 值不正确');
+        }
+      } catch (error) {
+        addTestResult('测试 localStorage', 'error', error.message);
+      }
+    }
+
+    async function testSubjectsAPI() {
+      addTestResult('测试科目列表 API', 'pending');
+      try {
+        const response = await fetch('/api/subjects?category=single_recruitment');
+        const data = await response.json();
+
+        if (data.success && data.subjects && data.subjects.length > 0) {
+          addTestResult(
+            '测试科目列表 API',
+            'success',
+            `成功获取 ${data.subjects.length} 个科目`,
+            data.subjects.map(s => ({ id: s.id, name: s.name }))
+          );
+          return data.subjects;
+        } else {
+          addTestResult('测试科目列表 API', 'error', 'API 返回数据格式不正确');
+          return null;
+        }
+      } catch (error) {
+        addTestResult('测试科目列表 API', 'error', error.message);
+        return null;
+      }
+    }
+
+    async function testQuestionsAPI(subjectId) {
+      addTestResult('测试题目列表 API', 'pending');
+      try {
+        const response = await fetch(`/api/practice/questions?subjectId=${subjectId}&userId=1`);
+        const data = await response.json();
+
+        if (data.success && data.questions && data.questions.length > 0) {
+          addTestResult(
+            '测试题目列表 API',
+            'success',
+            `成功获取 ${data.questions.length} 道题目，已答 ${data.answerCount} 题`,
+            {
+              count: data.questions.length,
+              firstQuestion: {
+                id: data.questions[0].id,
+                text: data.questions[0].question_text.substring(0, 50) + '...',
+                optionsCount: data.questions[0].options.length,
+                answer: data.questions[0].answer
+              }
+            }
+          );
+        } else {
+          addTestResult('测试题目列表 API', 'error', 'API 返回数据格式不正确');
+        }
+      } catch (error) {
+        addTestResult('测试题目列表 API', 'error', error.message);
+      }
+    }
+
+    async function testCheckUnlockAPI(subjectId) {
+      addTestResult('测试解锁状态 API', 'pending');
+      try {
+        const response = await fetch(`/api/practice/check-unlock?userId=1&type=subject&targetId=${subjectId}`);
+        const data = await response.json();
+
+        if (data.success) {
+          addTestResult(
+            '测试解锁状态 API',
+            'success',
+            `解锁状态: ${data.isUnlocked ? '已解锁' : '未解锁'}`,
+            data
+          );
+        } else {
+          addTestResult('测试解锁状态 API', 'error', 'API 返回失败');
+        }
+      } catch (error) {
+        addTestResult('测试解锁状态 API', 'error', error.message);
+      }
+    }
+
+    async function runAllTests() {
+      clearResults();
+      await testLocalStorage();
+      const subjects = await testSubjectsAPI();
+      if (subjects && subjects.length > 0) {
+        const subjectId = subjects[0].id;
+        await testQuestionsAPI(subjectId);
+        await testCheckUnlockAPI(subjectId);
+      }
+    }
+
+    function clearResults() {
+      testResults.length = 0;
+      updateUI();
+    }
+
+    // 页面加载后自动运行测试
+    updateUI();
+    setTimeout(runAllTests, 1000);
+  </script>
+</body>
+</html>

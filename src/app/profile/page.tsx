@@ -4,7 +4,15 @@ import { useState, useEffect } from 'react';
 
 export default function ProfilePage({ onLogout }: { onLogout: () => void }) {
   const [activeSection, setActiveSection] = useState<string>('orders');
-  const [userId] = useState(localStorage.getItem('userId'));
+  const [mounted, setMounted] = useState(false);
+  const [userId, setUserId] = useState<string>('');
+
+  // 确保组件只在客户端运行时才访问localStorage
+  useEffect(() => {
+    setMounted(true);
+    const savedUserId = localStorage.getItem('userId');
+    setUserId(savedUserId || '1');
+  }, []);
 
   const sections = [
     { id: 'mistakes', label: '错题集', icon: '❌' },

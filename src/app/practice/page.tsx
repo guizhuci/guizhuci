@@ -13,19 +13,23 @@ export default function PracticePage() {
   const [selectedSubject, setSelectedSubject] = useState<Subject | null>(null);
   const [mode, setMode] = useState<'list' | 'answer' | 'memorize'>('list');
   const [loading, setLoading] = useState(true);
-  const [userId, setUserId] = useState<string>('');
+  const [mounted, setMounted] = useState(false);
+
+  // 确保组件只在客户端运行时才访问localStorage
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
-    // 如果没有userId，设置默认值为1（用于测试）
-    const savedUserId = localStorage.getItem('userId');
-    if (!savedUserId) {
-      localStorage.setItem('userId', '1');
-      setUserId('1');
-    } else {
-      setUserId(savedUserId);
+    if (mounted) {
+      // 设置默认userId
+      const savedUserId = localStorage.getItem('userId');
+      if (!savedUserId) {
+        localStorage.setItem('userId', '1');
+      }
+      loadSubjects();
     }
-    loadSubjects();
-  }, []);
+  }, [mounted]);
 
   const loadSubjects = async () => {
     try {
@@ -44,7 +48,8 @@ export default function PracticePage() {
     setMode('answer');
   };
 
-  if (loading) {
+  // 服务端渲染时显示加载状态
+  if (!mounted || loading) {
     return <div className="p-6 text-center">加载中...</div>;
   }
 
@@ -98,19 +103,22 @@ function PracticeMode({ subject, mode, onModeChange, onBack }: PracticeModeProps
   const [showPurchase, setShowPurchase] = useState(false);
   const [answerCount, setAnswerCount] = useState(0);
   const [isUnlocked, setIsUnlocked] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const [userId, setUserId] = useState<string>('');
 
+  // 确保组件只在客户端运行时才访问localStorage
   useEffect(() => {
+    setMounted(true);
     const savedUserId = localStorage.getItem('userId');
     setUserId(savedUserId || '1');
   }, []);
 
   useEffect(() => {
-    if (userId) {
+    if (mounted && userId) {
       loadQuestions();
       checkUnlockStatus();
     }
-  }, [subject.id, userId]);
+  }, [subject.id, userId, mounted]);
 
   const loadQuestions = async () => {
     try {
