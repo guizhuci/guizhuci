@@ -1,92 +1,8 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { Pool } from 'pg';
-import fs from 'fs/promises';
-import path from 'path';
+const mammoth = require('mammoth');
 
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-});
-
-export async function POST(request: NextRequest) {
+async function parseWordFile() {
   try {
-    const formData = await request.formData();
-    const file = formData.get('file') as File;
-    const subjectId = formData.get('subjectId') as string;
-
-    if (!file) {
-      return NextResponse.json({ success: false, error: '请上传文件' }, { status: 400 });
-    }
-
-    if (!subjectId) {
-      return NextResponse.json({ success: false, error: '请选择科目' }, { status: 400 });
-    }
-
-    if (!file.name.endsWith('.docx')) {
-      return NextResponse.json({ success: false, error: '请上传.docx格式的文件' }, { status: 400 });
-    }
-
-    const tempDir = '/tmp';
-    const filePath = path.join(tempDir, file.name);
-    const buffer = Buffer.from(await file.arrayBuffer());
-    await fs.writeFile(filePath, buffer);
-
-    const questions = await parseWordDocument(filePath);
-
-    await fs.unlink(filePath);
-
-    if (questions.length === 0) {
-      return NextResponse.json({ success: false, error: '未解析到任何题目，请检查文档格式' }, { status: 400 });
-    }
-
-    const client = await pool.connect();
-    try {
-      await client.query('BEGIN');
-
-      let importedCount = 0;
-      for (const q of questions) {
-        const result = await client.query(
-          `INSERT INTO questions (subject_id, type, question_text, options, answer, explanation, sort_order)
-           VALUES ($1, $2, $3, $4, $5, $6, $7)
-           RETURNING id`,
-          [
-            parseInt(subjectId),
-            q.type,
-            q.question,
-            JSON.stringify(q.options),
-            q.answer,
-            q.explanation || '',
-            importedCount
-          ]
-        );
-
-        importedCount++;
-      }
-
-      await client.query('COMMIT');
-
-      return NextResponse.json({
-        success: true,
-        imported: importedCount,
-        total: questions.length
-      });
-    } catch (error) {
-      await client.query('ROLLBACK');
-      throw error;
-    } finally {
-      client.release();
-    }
-  } catch (error) {
-    console.error('导入题目失败:', error);
-    return NextResponse.json({
-      success: false,
-      error: error instanceof Error ? error.message : '导入失败，请稍后重试'
-    }, { status: 500 });
-  }
-}
-
-async function parseWordDocument(filePath: string): Promise<any[]> {
-  try {
-    const mammoth = require('mammoth');
+    const filePath = '/workspace/projects/assets/信息技术.docx';
 
     const result = await mammoth.convertToHtml({ path: filePath });
     const html = result.value;
@@ -99,15 +15,32 @@ async function parseWordDocument(filePath: string): Promise<any[]> {
       .replace(/&amp;/g, '&')
       .replace(/\n+/g, '\n');
 
-    return parseQuestionsText(text);
+    const questions = parseQuestionsText(text);
+
+    console.log(`\n共解析到 ${questions.length} 道题目\n`);
+
+    console.log('========== 所有题目预览 ==========\n');
+    questions.forEach((q, index) => {
+      console.log(`题目 ${index + 1} [${q.type}, index=${q.index}]:`);
+      console.log(`  内容: ${q.question.substring(0, 60)}...`);
+      console.log(`  选项: ${q.options.join(', ')}`);
+      console.log(`  答案: ${q.answer || '未匹配'}`);
+      console.log(`  解析: ${q.explanation.substring(0, 60)}...`);
+      console.log('');
+    });
+
+    console.log('\n========== 统计信息 ==========');
+    console.log('总题数:', questions.length);
+    console.log('已匹配答案题数:', questions.filter(q => q.answer).length);
+    console.log('已匹配解析题数:', questions.filter(q => q.explanation).length);
+
   } catch (error) {
-    console.error('解析Word文档失败:', error);
-    throw new Error('文档解析失败，请检查文件格式');
+    console.error('解析失败:', error);
   }
 }
 
-function parseQuestionsText(text: string): any[] {
-  const questions: any[] = [];
+function parseQuestionsText(text) {
+  const questions = [];
 
   const referenceIndex = text.indexOf('参考答案');
 
@@ -125,7 +58,7 @@ function parseQuestionsText(text: string): any[] {
   let currentType = 'single_choice';
   let typeStartIndex = 0;
 
-  parsedQuestions.forEach((q: any) => {
+  parsedQuestions.forEach((q) => {
     if (q.type !== currentType) {
       currentType = q.type;
       typeStartIndex = 0;
@@ -142,11 +75,11 @@ function parseQuestionsText(text: string): any[] {
   return questions;
 }
 
-function parseQuestionsSection(text: string): any[] {
-  const questions: any[] = [];
+function parseQuestionsSection(text) {
+  const questions = [];
   const lines = text.split('\n').map(line => line.trim()).filter(line => line);
 
-  let currentQuestion: any = null;
+  let currentQuestion = null;
   let currentType = 'single_choice';
   let currentIndex = 1;
 
@@ -184,7 +117,7 @@ function parseQuestionsSection(text: string): any[] {
         answer: '',
         explanation: '',
         type: currentType,
-        index: currentIndex - 1
+        index: currentIndex - 1  // 修复：使用 currentIndex - 1
       };
       currentIndex++;
       continue;
@@ -223,7 +156,7 @@ function parseQuestionsSection(text: string): any[] {
   return questions;
 }
 
-function parseAnswersSection(text: string): Map<string, any> {
+function parseAnswersSection(text) {
   const answers = new Map();
   const lines = text.split('\n').map(line => line.trim()).filter(line => line);
 
@@ -236,7 +169,6 @@ function parseAnswersSection(text: string): Map<string, any> {
     const line = lines[i];
 
     if (line.includes('单项选择')) {
-      // 先保存当前正在处理的答案
       if (hasCurrentAnswer && currentAnswer) {
         const answerData = parseAnswerLine(currentAnswer, currentType);
         answers.set(`${currentType}_${currentIndex - 1}`, answerData);
@@ -250,7 +182,6 @@ function parseAnswersSection(text: string): Map<string, any> {
     }
 
     if (line.includes('判断题')) {
-      // 先保存当前正在处理的答案
       if (hasCurrentAnswer && currentAnswer) {
         const answerData = parseAnswerLine(currentAnswer, currentType);
         answers.set(`${currentType}_${currentIndex - 1}`, answerData);
@@ -264,7 +195,6 @@ function parseAnswersSection(text: string): Map<string, any> {
     }
 
     if (line.includes('综合探究')) {
-      // 先保存当前正在处理的答案
       if (hasCurrentAnswer && currentAnswer) {
         const answerData = parseAnswerLine(currentAnswer, currentType);
         answers.set(`${currentType}_${currentIndex - 1}`, answerData);
@@ -295,7 +225,6 @@ function parseAnswersSection(text: string): Map<string, any> {
     }
   }
 
-  // 保存最后一题答案
   if (hasCurrentAnswer && currentAnswer) {
     const answerData = parseAnswerLine(currentAnswer, currentType);
     answers.set(`${currentType}_${currentIndex - 1}`, answerData);
@@ -304,7 +233,7 @@ function parseAnswersSection(text: string): Map<string, any> {
   return answers;
 }
 
-function parseAnswerLine(text: string, type: string): any {
+function parseAnswerLine(text, type) {
   let answer = '';
   let explanation = '';
 
@@ -342,11 +271,11 @@ function parseAnswerLine(text: string, type: string): any {
   return { answer, explanation };
 }
 
-function parseSimpleQuestions(text: string): any[] {
-  const questions: any[] = [];
+function parseSimpleQuestions(text) {
+  const questions = [];
   const lines = text.split('\n').map(line => line.trim()).filter(line => line);
 
-  let currentQuestion: any = null;
+  let currentQuestion = null;
   let inAnswerSection = false;
 
   for (let i = 0; i < lines.length; i++) {
@@ -400,3 +329,5 @@ function parseSimpleQuestions(text: string): any[] {
 
   return questions;
 }
+
+parseWordFile();
