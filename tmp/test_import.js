@@ -1,81 +1,10 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { getDb } from 'coze-coding-dev-sdk';
-import { questions, subjects } from '@/storage/database/shared/schema';
-import { eq } from 'drizzle-orm';
-import fs from 'fs/promises';
-import path from 'path';
+const mammoth = require('mammoth');
+const fs = require('fs').promises;
+const path = require('path');
 
-export async function POST(request: NextRequest) {
+// 复制解析逻辑
+async function parseWordDocument(filePath) {
   try {
-    const formData = await request.formData();
-    const file = formData.get('file') as File;
-    const subjectId = formData.get('subjectId') as string;
-
-    if (!file) {
-      return NextResponse.json({ success: false, error: '请上传文件' }, { status: 400 });
-    }
-
-    if (!subjectId) {
-      return NextResponse.json({ success: false, error: '请选择科目' }, { status: 400 });
-    }
-
-    if (!file.name.endsWith('.docx')) {
-      return NextResponse.json({ success: false, error: '请上传.docx格式的文件' }, { status: 400 });
-    }
-
-    const tempDir = '/tmp';
-    const filePath = path.join(tempDir, file.name);
-    const buffer = Buffer.from(await file.arrayBuffer());
-    await fs.writeFile(filePath, buffer);
-
-    const parsedQuestions = await parseWordDocument(filePath);
-
-    await fs.unlink(filePath);
-
-    if (parsedQuestions.length === 0) {
-      return NextResponse.json({ success: false, error: '未解析到任何题目，请检查文档格式' }, { status: 400 });
-    }
-
-    const db = await getDb();
-
-    // 验证科目是否存在
-    const subjectCheck = await db.select().from(subjects).where(eq(subjects.id, parseInt(subjectId))).limit(1);
-    if (subjectCheck.length === 0) {
-      return NextResponse.json({ success: false, error: '所选科目不存在' }, { status: 400 });
-    }
-
-    let importedCount = 0;
-    for (const q of parsedQuestions) {
-      await db.insert(questions).values({
-        subjectId: parseInt(subjectId),
-        type: q.type,
-        questionText: q.question,
-        options: q.options,
-        answer: q.answer,
-        explanation: q.explanation || '',
-        sortOrder: importedCount
-      });
-      importedCount++;
-    }
-
-    return NextResponse.json({
-      success: true,
-      imported: importedCount,
-      total: parsedQuestions.length
-    });
-  } catch (error) {
-    console.error('导入题目失败:', error);
-    return NextResponse.json({
-      success: false,
-      error: error instanceof Error ? error.message : '导入失败，请稍后重试'
-    }, { status: 500 });
-  }
-}
-
-async function parseWordDocument(filePath: string): Promise<any[]> {
-  try {
-    const mammoth = require('mammoth');
-
     const result = await mammoth.convertToHtml({ path: filePath });
     const html = result.value;
 
@@ -87,131 +16,15 @@ async function parseWordDocument(filePath: string): Promise<any[]> {
       .replace(/&amp;/g, '&')
       .replace(/\n+/g, '\n');
 
-    // 检测文档格式
-    const isInterleaved = detectFormat(text);
-
-    if (isInterleaved) {
-      return parseInterleavedQuestions(text);
-    } else {
-      return parseQuestionsText(text);
-    }
+    return parseQuestionsText(text);
   } catch (error) {
     console.error('解析Word文档失败:', error);
     throw new Error('文档解析失败，请检查文件格式');
   }
 }
 
-function detectFormat(text: string): boolean {
-  // 检测是否有交错格式：在题目编号后10行内找到"参考答案"
-  const lines = text.split('\n');
-  for (let i = 0; i < lines.length; i++) {
-    const questionMatch = lines[i].match(/^(\d+)[.、]/);
-    if (questionMatch) {
-      // 检查接下来10行内是否有"参考答案"
-      for (let j = i + 1; j < Math.min(i + 10, lines.length); j++) {
-        if (lines[j].includes('参考答案')) {
-          return true;
-        }
-      }
-      // 找到第一个题目后，检查后续，如果连续多个题目后没有"参考答案"，则认为是分开格式
-      let questionCount = 0;
-      for (let k = i; k < lines.length; k++) {
-        if (lines[k].match(/^(\d+)[.、]/)) {
-          questionCount++;
-          if (questionCount > 3) break;
-        } else if (lines[k].includes('参考答案')) {
-          return true;
-        }
-      }
-      if (questionCount > 3) return false;
-    }
-  }
-  return false;
-}
-
-function parseInterleavedQuestions(text: string): any[] {
-  const questions: any[] = [];
-  const lines = text.split('\n').map(line => line.trim()).filter(line => line);
-
-  let currentQuestion: any = null;
-  let currentType = 'single_choice';
-
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
-
-    // 检测题型切换
-    if (line.includes('单项选择')) { currentType = 'single_choice'; continue; }
-    if (line.includes('判断题')) { currentType = 'judge'; continue; }
-    if (line.includes('综合探究')) { currentType = 'essay'; continue; }
-
-    // 检测新题目
-    const questionMatch = line.match(/^(\d+)[.、]\s*(.+)/);
-    if (questionMatch) {
-      // 保存上一题
-      if (currentQuestion && currentQuestion.question) {
-        questions.push(currentQuestion);
-      }
-
-      currentQuestion = {
-        question: questionMatch[2],
-        options: [],
-        answer: '',
-        explanation: '',
-        type: currentType
-      };
-      continue;
-    }
-
-    if (!currentQuestion) continue;
-
-    // 处理选项
-    if (currentType === 'single_choice') {
-      const optionMatch = line.match(/^([ABCD])[.、]\s*(.+)/);
-      if (optionMatch) {
-        currentQuestion.options.push(optionMatch[2]);
-        continue;
-      }
-    }
-
-    // 处理答案
-    if (line.includes('参考答案')) {
-      const answerMatch = line.match(/参考答案[:：]\s*(.+)/);
-      if (answerMatch) {
-        let answer = answerMatch[1].trim();
-        // 提取答案字母或判断词
-        if (currentType === 'single_choice') {
-          const letterMatch = answer.match(/^([ABCD])/);
-          if (letterMatch) currentQuestion.answer = letterMatch[1];
-        } else if (currentType === 'judge') {
-          const judgeMatch = answer.match(/^(正确|错误)/);
-          if (judgeMatch) currentQuestion.answer = judgeMatch[1];
-        } else {
-          currentQuestion.answer = answer;
-        }
-      }
-      continue;
-    }
-
-    // 处理解析
-    if (line.includes('解析')) {
-      const explanationMatch = line.match(/解析[:：]\s*(.+)/);
-      if (explanationMatch) {
-        currentQuestion.explanation = explanationMatch[1].trim();
-      }
-      continue;
-    }
-  }
-
-  // 保存最后一题
-  if (currentQuestion && currentQuestion.question) {
-    questions.push(currentQuestion);
-  }
-
-  return questions;
-}
-
-function parseQuestionsText(text: string): any[] {
-  const questions: any[] = [];
+function parseQuestionsText(text) {
+  const questions = [];
 
   const referenceIndex = text.indexOf('参考答案');
 
@@ -229,7 +42,7 @@ function parseQuestionsText(text: string): any[] {
   let currentType = 'single_choice';
   let typeStartIndex = 0;
 
-  parsedQuestions.forEach((q: any) => {
+  parsedQuestions.forEach((q) => {
     if (q.type !== currentType) {
       currentType = q.type;
       typeStartIndex = 0;
@@ -246,11 +59,11 @@ function parseQuestionsText(text: string): any[] {
   return questions;
 }
 
-function parseQuestionsSection(text: string): any[] {
-  const questions: any[] = [];
+function parseQuestionsSection(text) {
+  const questions = [];
   const lines = text.split('\n').map(line => line.trim()).filter(line => line);
 
-  let currentQuestion: any = null;
+  let currentQuestion = null;
   let currentType = 'single_choice';
   let currentIndex = 1;
 
@@ -305,7 +118,6 @@ function parseQuestionsSection(text: string): any[] {
     }
   }
 
-  // 添加最后一题
   if (currentQuestion && currentQuestion.question) {
     currentQuestion.index = currentIndex - 1;
     questions.push(currentQuestion);
@@ -314,7 +126,7 @@ function parseQuestionsSection(text: string): any[] {
   return questions;
 }
 
-function parseAnswersSection(text: string): Map<string, any> {
+function parseAnswersSection(text) {
   const answers = new Map();
   const lines = text.split('\n').map(line => line.trim()).filter(line => line);
 
@@ -327,7 +139,6 @@ function parseAnswersSection(text: string): Map<string, any> {
     const line = lines[i];
 
     if (line.includes('单项选择')) {
-      // 先保存当前正在处理的答案
       if (hasCurrentAnswer && currentAnswer) {
         const answerData = parseAnswerLine(currentAnswer, currentType);
         answers.set(`${currentType}_${currentIndex - 1}`, answerData);
@@ -341,7 +152,6 @@ function parseAnswersSection(text: string): Map<string, any> {
     }
 
     if (line.includes('判断题')) {
-      // 先保存当前正在处理的答案
       if (hasCurrentAnswer && currentAnswer) {
         const answerData = parseAnswerLine(currentAnswer, currentType);
         answers.set(`${currentType}_${currentIndex - 1}`, answerData);
@@ -355,7 +165,6 @@ function parseAnswersSection(text: string): Map<string, any> {
     }
 
     if (line.includes('综合探究')) {
-      // 先保存当前正在处理的答案
       if (hasCurrentAnswer && currentAnswer) {
         const answerData = parseAnswerLine(currentAnswer, currentType);
         answers.set(`${currentType}_${currentIndex - 1}`, answerData);
@@ -386,7 +195,6 @@ function parseAnswersSection(text: string): Map<string, any> {
     }
   }
 
-  // 保存最后一题答案
   if (hasCurrentAnswer && currentAnswer) {
     const answerData = parseAnswerLine(currentAnswer, currentType);
     answers.set(`${currentType}_${currentIndex}`, answerData);
@@ -395,7 +203,7 @@ function parseAnswersSection(text: string): Map<string, any> {
   return answers;
 }
 
-function parseAnswerLine(line: string, type: string): any {
+function parseAnswerLine(line, type) {
   const match = line.match(/^(\d+)[.、]\s*(.+)/);
   if (!match) {
     return { answer: '', explanation: '' };
@@ -428,11 +236,11 @@ function parseAnswerLine(line: string, type: string): any {
   return { answer: content, explanation: '' };
 }
 
-function parseSimpleQuestions(text: string): any[] {
-  const questions: any[] = [];
+function parseSimpleQuestions(text) {
+  const questions = [];
   const lines = text.split('\n').map(line => line.trim()).filter(line => line);
 
-  let currentQuestion: any = null;
+  let currentQuestion = null;
   let currentType = 'single_choice';
 
   for (let i = 0; i < lines.length; i++) {
@@ -486,3 +294,108 @@ function parseSimpleQuestions(text: string): any[] {
 
   return questions;
 }
+
+// 主函数
+async function testFile(filePath, subjectName) {
+  console.log(`\n${'='.repeat(60)}`);
+  console.log(`测试文件: ${subjectName}`);
+  console.log(`路径: ${filePath}`);
+  console.log('='.repeat(60));
+
+  try {
+    const questions = await parseWordDocument(filePath);
+
+    console.log(`\n✓ 解析成功！`);
+    console.log(`  总题数: ${questions.length}`);
+
+    // 按题型统计
+    const typeStats = {};
+    const answerStats = { withAnswer: 0, withoutAnswer: 0 };
+
+    questions.forEach((q, idx) => {
+      typeStats[q.type] = (typeStats[q.type] || 0) + 1;
+      if (q.answer) {
+        answerStats.withAnswer++;
+      } else {
+        answerStats.withoutAnswer++;
+      }
+
+      // 显示前3道题的详细信息
+      if (idx < 3) {
+        console.log(`\n第${idx + 1}题:`);
+        console.log(`  类型: ${q.type}`);
+        console.log(`  问题: ${q.question.substring(0, 50)}...`);
+        console.log(`  选项: ${q.options.length > 0 ? q.options.join(', ') : '无'}`);
+        console.log(`  答案: ${q.answer || '未匹配'}`);
+        console.log(`  解析: ${q.explanation ? q.explanation.substring(0, 30) + '...' : '无'}`);
+      }
+    });
+
+    console.log(`\n题型统计:`);
+    Object.entries(typeStats).forEach(([type, count]) => {
+      console.log(`  ${type}: ${count}道`);
+    });
+
+    console.log(`\n答案匹配情况:`);
+    console.log(`  有答案: ${answerStats.withAnswer}道`);
+    console.log(`  无答案: ${answerStats.withoutAnswer}道`);
+
+    return {
+      success: true,
+      total: questions.length,
+      typeStats,
+      answerStats,
+      questions
+    };
+  } catch (error) {
+    console.log(`\n✗ 解析失败: ${error.message}`);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+}
+
+// 测试所有文件
+async function testAllFiles() {
+  const files = [
+    { path: '/workspace/projects/assets/信息技术_test.docx', name: '信息技术' },
+    { path: '/workspace/projects/assets/通用技术_test.docx', name: '通用技术' },
+    { path: '/workspace/projects/assets/美术_test.docx', name: '美术' },
+    { path: '/workspace/projects/assets/音乐_test.docx', name: '音乐' },
+    { path: '/workspace/projects/assets/综合实践_test.docx', name: '综合实践' },
+  ];
+
+  const results = {};
+
+  for (const file of files) {
+    const result = await testFile(file.path, file.name);
+    results[file.name] = result;
+  }
+
+  // 总结
+  console.log(`\n\n${'='.repeat(60)}`);
+  console.log('测试总结');
+  console.log('='.repeat(60));
+
+  let totalQuestions = 0;
+  let totalSuccess = 0;
+
+  Object.entries(results).forEach(([name, result]) => {
+    if (result.success) {
+      totalQuestions += result.total;
+      totalSuccess++;
+      console.log(`✓ ${name}: ${result.total}道题`);
+    } else {
+      console.log(`✗ ${name}: 解析失败 - ${result.error}`);
+    }
+  });
+
+  console.log(`\n总计:`);
+  console.log(`  成功: ${totalSuccess}/5`);
+  console.log(`  总题数: ${totalQuestions}道`);
+
+  return results;
+}
+
+testAllFiles();
