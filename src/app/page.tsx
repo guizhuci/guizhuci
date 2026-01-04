@@ -54,6 +54,15 @@ export default function Home() {
                 </button>
                 <p className="text-sm text-gray-500">首次登录需绑定手机号</p>
               </div>
+              {/* 后台管理入口 */}
+              <div className="mt-12 pt-8 border-t border-gray-200">
+                <a
+                  href="/admin"
+                  className="text-sm text-gray-400 hover:text-gray-600 underline"
+                >
+                  后台管理系统
+                </a>
+              </div>
             </div>
           </div>
         )}
