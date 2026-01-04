@@ -1,11 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { Pool } from 'pg';
+import { getDb } from 'coze-coding-dev-sdk';
+import { questions, subjects } from '@/storage/database/shared/schema';
+import { eq } from 'drizzle-orm';
 import fs from 'fs/promises';
 import path from 'path';
-
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-});
 
 export async function POST(request: NextRequest) {
   try {
@@ -30,51 +28,41 @@ export async function POST(request: NextRequest) {
     const buffer = Buffer.from(await file.arrayBuffer());
     await fs.writeFile(filePath, buffer);
 
-    const questions = await parseWordDocument(filePath);
+    const parsedQuestions = await parseWordDocument(filePath);
 
     await fs.unlink(filePath);
 
-    if (questions.length === 0) {
+    if (parsedQuestions.length === 0) {
       return NextResponse.json({ success: false, error: '未解析到任何题目，请检查文档格式' }, { status: 400 });
     }
 
-    const client = await pool.connect();
-    try {
-      await client.query('BEGIN');
+    const db = await getDb();
 
-      let importedCount = 0;
-      for (const q of questions) {
-        const result = await client.query(
-          `INSERT INTO questions (subject_id, type, question_text, options, answer, explanation, sort_order)
-           VALUES ($1, $2, $3, $4, $5, $6, $7)
-           RETURNING id`,
-          [
-            parseInt(subjectId),
-            q.type,
-            q.question,
-            JSON.stringify(q.options),
-            q.answer,
-            q.explanation || '',
-            importedCount
-          ]
-        );
-
-        importedCount++;
-      }
-
-      await client.query('COMMIT');
-
-      return NextResponse.json({
-        success: true,
-        imported: importedCount,
-        total: questions.length
-      });
-    } catch (error) {
-      await client.query('ROLLBACK');
-      throw error;
-    } finally {
-      client.release();
+    // 验证科目是否存在
+    const subjectCheck = await db.select().from(subjects).where(eq(subjects.id, parseInt(subjectId))).limit(1);
+    if (subjectCheck.length === 0) {
+      return NextResponse.json({ success: false, error: '所选科目不存在' }, { status: 400 });
     }
+
+    let importedCount = 0;
+    for (const q of parsedQuestions) {
+      await db.insert(questions).values({
+        subjectId: parseInt(subjectId),
+        type: q.type,
+        questionText: q.question,
+        options: q.options,
+        answer: q.answer,
+        explanation: q.explanation || '',
+        sortOrder: importedCount
+      });
+      importedCount++;
+    }
+
+    return NextResponse.json({
+      success: true,
+      imported: importedCount,
+      total: parsedQuestions.length
+    });
   } catch (error) {
     console.error('导入题目失败:', error);
     return NextResponse.json({
@@ -199,24 +187,11 @@ function parseQuestionsSection(text: string): any[] {
         continue;
       }
     }
-
-    if (currentType === 'judge') {
-      const optionMatch = line.match(/^[ABCD][.、]\s*(正确|错误)/);
-      if (optionMatch) {
-        currentQuestion.options = ['正确', '错误'];
-        continue;
-      }
-    }
-
-    if (currentType === 'essay') {
-      const subQuestionMatch = line.match(/^(\([0-9]+\))\s*(.+)/);
-      if (subQuestionMatch) {
-        currentQuestion.question += '\n' + subQuestionMatch[2];
-      }
-    }
   }
 
+  // 添加最后一题
   if (currentQuestion && currentQuestion.question) {
+    currentQuestion.index = currentIndex - 1;
     questions.push(currentQuestion);
   }
 
@@ -298,48 +273,43 @@ function parseAnswersSection(text: string): Map<string, any> {
   // 保存最后一题答案
   if (hasCurrentAnswer && currentAnswer) {
     const answerData = parseAnswerLine(currentAnswer, currentType);
-    answers.set(`${currentType}_${currentIndex - 1}`, answerData);
+    answers.set(`${currentType}_${currentIndex}`, answerData);
   }
 
   return answers;
 }
 
-function parseAnswerLine(text: string, type: string): any {
-  let answer = '';
-  let explanation = '';
+function parseAnswerLine(line: string, type: string): any {
+  const match = line.match(/^(\d+)[.、]\s*(.+)/);
+  if (!match) {
+    return { answer: '', explanation: '' };
+  }
 
-  const answerMatch = text.match(/[：:]\s*([ABCD]+)/);
-  if (answerMatch) {
-    answer = answerMatch[1];
-  } else if (type === 'judge') {
-    const answerMatch = text.match(/[：:]\s*([ABCD]+)/);
+  const content = match[2].trim();
+
+  if (type === 'single_choice') {
+    const answerMatch = content.match(/^([ABCD])([\s\S]*)/);
     if (answerMatch) {
-      answer = answerMatch[1] === 'A' ? 'A' : 'B';
+      const answer = answerMatch[1];
+      const explanation = answerMatch[2].trim().replace(/^【\s*/, '').replace(/】\s*$/, '').trim();
+      return { answer, explanation };
+    }
+  } else if (type === 'judge') {
+    const answerMatch = content.match(/^(正确|错误)([\s\S]*)/);
+    if (answerMatch) {
+      const answer = answerMatch[1];
+      const explanation = answerMatch[2].trim().replace(/^【\s*/, '').replace(/】\s*$/, '').trim();
+      return { answer, explanation };
     }
   } else if (type === 'essay') {
-    const answerMatch = text.match(/[：:]\s*/);
+    const answerMatch = content.match(/^答[:：]\s*([\s\S]*)/);
     if (answerMatch) {
-      const parts = text.split(/解析[：:]/);
-      answer = parts[0].substring(answerMatch[0].length).trim();
-      if (parts.length > 1) {
-        explanation = parts[1].trim();
-      }
+      const answer = answerMatch[1].trim();
+      return { answer, explanation: '' };
     }
   }
 
-  if (!explanation) {
-    const explanationMatch = text.match(/解析[：:]\s*(.+)/);
-    if (explanationMatch) {
-      explanation = explanationMatch[1];
-    } else {
-      const parts = text.split(/解析[：:]/);
-      if (parts.length > 1) {
-        explanation = parts[1].trim();
-      }
-    }
-  }
-
-  return { answer, explanation };
+  return { answer: content, explanation: '' };
 }
 
 function parseSimpleQuestions(text: string): any[] {
@@ -347,13 +317,28 @@ function parseSimpleQuestions(text: string): any[] {
   const lines = text.split('\n').map(line => line.trim()).filter(line => line);
 
   let currentQuestion: any = null;
-  let inAnswerSection = false;
+  let currentType = 'single_choice';
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
 
+    if (line.includes('单项选择')) {
+      currentType = 'single_choice';
+      continue;
+    }
+
+    if (line.includes('判断题')) {
+      currentType = 'judge';
+      continue;
+    }
+
+    if (line.includes('综合探究')) {
+      currentType = 'essay';
+      continue;
+    }
+
     const questionMatch = line.match(/^(\d+)[.、]\s*(.+)/);
-    if (questionMatch && !inAnswerSection) {
+    if (questionMatch) {
       if (currentQuestion && currentQuestion.question) {
         questions.push(currentQuestion);
       }
@@ -363,34 +348,19 @@ function parseSimpleQuestions(text: string): any[] {
         options: [],
         answer: '',
         explanation: '',
-        type: 'single_choice'
+        type: currentType
       };
       continue;
     }
 
     if (!currentQuestion) continue;
 
-    const optionMatch = line.match(/^([ABCD])[.、]\s*(.+)/);
-    if (optionMatch && !inAnswerSection) {
-      currentQuestion.options.push(optionMatch[2]);
-      continue;
-    }
-
-    if (line.startsWith('答案') || line.startsWith('【答案】')) {
-      const answerMatch = line.match(/答案[：:]\s*([ABCD]+)/);
-      if (answerMatch) {
-        currentQuestion.answer = answerMatch[1];
-        inAnswerSection = true;
+    if (currentType === 'single_choice') {
+      const optionMatch = line.match(/^([ABCD])[.、]\s*(.+)/);
+      if (optionMatch) {
+        currentQuestion.options.push(optionMatch[2]);
+        continue;
       }
-      continue;
-    }
-
-    if (line.startsWith('解析') || line.startsWith('【解析】')) {
-      const explanationMatch = line.match(/解析[：:]\s*(.+)/);
-      if (explanationMatch) {
-        currentQuestion.explanation = explanationMatch[1];
-      }
-      continue;
     }
   }
 
