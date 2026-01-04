@@ -15,9 +15,15 @@ export async function POST(request: NextRequest) {
       [questionId]
     );
 
-    const correctAnswer = questionResult.rows[0]?.answer;
+    const correctAnswer = questionResult.rows[0]?.answer || '';
     const subjectId = questionResult.rows[0]?.subject_id;
-    const isCorrect = answer === correctAnswer;
+
+    // 清理正确答案，移除"参考答案："前缀
+    const cleanCorrectAnswer = typeof correctAnswer === 'string'
+      ? correctAnswer.replace(/^参考答案[：:]\s*/i, '')
+      : correctAnswer;
+
+    const isCorrect = answer === cleanCorrectAnswer;
 
     // 插入答题记录
     await pool.query(

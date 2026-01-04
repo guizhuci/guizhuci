@@ -53,10 +53,36 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      questions: questionsResult.rows.map(row => ({
-        ...row,
-        options: row.options ? JSON.parse(row.options) : []
-      }))
+      questions: questionsResult.rows.map(row => {
+        // 处理options字段，支持多种格式
+        let options: string[] = [];
+        if (row.options) {
+          if (Array.isArray(row.options)) {
+            options = row.options;
+          } else if (typeof row.options === 'string') {
+            try {
+              options = JSON.parse(row.options);
+            } catch {
+              const cleanStr = row.options.trim().replace(/^\[|\]$/g, '');
+              if (cleanStr) {
+                options = cleanStr.split(/\s+/).filter(opt => opt.trim());
+              }
+            }
+          }
+        }
+
+        // 清理answer字段
+        let answer = row.answer || '';
+        if (typeof answer === 'string') {
+          answer = answer.replace(/^参考答案[：:]\s*/i, '');
+        }
+
+        return {
+          ...row,
+          options,
+          answer
+        };
+      })
     });
   } catch (error) {
     console.error('获取每日题目失败:', error);

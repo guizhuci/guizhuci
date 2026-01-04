@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>专项练习测试</title>
+</head>
+<body>
+  <h1>专项练习功能测试</h1>
+  <div id="test-results"></div>
+
+  <script>
+    const results = [];
+
+    async function testAPI(url, name) {
+      try {
+        const response = await fetch(url);
+        const data = await response.json();
+        results.push({ name, success: data.success, data });
+        console.log(`${name}:`, data);
+      } catch (error) {
+        results.push({ name, success: false, error: error.message });
+        console.error(`${name} 失败:`, error);
+      }
+    }
+
+    async function runTests() {
+      // 设置测试用户
+      localStorage.setItem('userId', '1');
+
+      // 测试1: 获取科目列表
+      await testAPI('/api/subjects?category=single_recruitment', '获取科目列表');
+
+      // 获取第一个科目ID
+      const subjectsResult = results[0];
+      if (subjectsResult && subjectsResult.success && subjectsResult.data.subjects.length > 0) {
+        const subjectId = subjectsResult.data.subjects[0].id;
+        const subjectName = subjectsResult.data.subjects[0].name;
+
+        // 测试2: 获取练习题目
+        await testAPI(`/api/practice/questions?subjectId=${subjectId}&userId=1`, '获取练习题目');
+
+        // 测试3: 检查解锁状态
+        await testAPI(`/api/practice/check-unlock?userId=1&type=subject&targetId=${subjectId}`, '检查解锁状态');
+
+        // 显示结果
+        displayResults();
+      } else {
+        results.push({ name: '获取科目ID', success: false, error: '无法获取科目列表' });
+        displayResults();
+      }
+    }
+
+    function displayResults() {
+      const html = results.map(result => `
+        <div style="margin: 10px 0; padding: 10px; border: 1px solid #ccc; border-radius: 5px;">
+          <h3 style="margin: 0 0 5px 0;">${result.name}</h3>
+          <p style="margin: 0; color: ${result.success ? 'green' : 'red'};">
+            状态: ${result.success ? '✓ 成功' : '✗ 失败'}
+          </p>
+          ${result.error ? `<p style="margin: 5px 0 0 0; color: red;">错误: ${result.error}</p>` : ''}
+          ${result.data ? `<pre style="margin: 5px 0 0 0; font-size: 12px;">${JSON.stringify(result.data, null, 2).substring(0, 200)}...</pre>` : ''}
+        </div>
+      `).join('');
+
+      document.getElementById('test-results').innerHTML = `
+        <h2>测试结果</h2>
+        ${html}
+        <p style="margin-top: 20px;">
+          <a href="/practice" target="_blank">访问专项练习页面</a>
+        </p>
+      `;
+    }
+
+    runTests();
+  </script>
+</body>
+</html>
