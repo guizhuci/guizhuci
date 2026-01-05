@@ -33,7 +33,7 @@ async function checkQuestions() {
         ep.price,
         COUNT(eq.question_id) as question_count
       FROM exam_papers ep
-      LEFT JOIN exam_questions eq ON ep.id = eq.exam_paper_id
+      LEFT JOIN exam_paper_questions eq ON ep.id = eq.exam_paper_id
       GROUP BY ep.id, ep.title, ep.is_free, ep.price
       ORDER BY ep.id
     `);
