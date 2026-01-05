@@ -4,7 +4,17 @@ node_modules/
 
 # next.js
 .next/
-out/
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+
+# logs
+logs/
+*.log
+
+# tmp test files
+tmp/
 
 # production
 build/
